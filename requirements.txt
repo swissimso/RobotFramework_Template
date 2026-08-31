@@ -1,0 +1,2 @@
+# Core framework only
+robotframework>=7.0

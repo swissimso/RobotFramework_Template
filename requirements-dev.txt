@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Optional linting/style checks for Robot files
+robotframework-robocop>=5.0

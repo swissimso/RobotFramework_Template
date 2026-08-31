@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Windows GUI testing (FlaUI / UIA based, Windows only)
+robotframework-flaui>=5.2.0

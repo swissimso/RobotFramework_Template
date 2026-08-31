@@ -1,0 +1,2 @@
+{"level":"info","time":"2026-08-31T19:48:19.107Z","seq":1,"component":"browser-library","msg":"Listening on 127.0.0.1:49177"}
+{"level":"info","time":"2026-08-31T19:48:19.244Z","seq":2,"component":"browser-library","event_kind":"grpc","action":"newBrowser","status":"started"}

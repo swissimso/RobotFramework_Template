@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Web GUI testing (Playwright based)
+robotframework-browser>=18.0.0
