@@ -1,9 +1,8 @@
 # Robot Framework POM Template
 
-A starter template for building automated software test frameworks with Robot Framework,
-using the **Page Object Model (POM)** pattern. It includes a working example for **web GUI
-testing** (Browser/Playwright library) and one for **Windows desktop GUI testing** (FlaUI
-library).
+A starter template for automated UI testing with Robot Framework and the **Page Object Model
+(POM)** pattern. It contains web examples powered by Browser/Playwright and a Windows desktop
+example powered by FlaUI.
 
 ## Structure
 
@@ -13,24 +12,23 @@ RESOURCES/
     web_utils.resource        Wraps the Browser (Playwright) library.
     windows_utils.resource     Wraps the FlaUILibrary (Windows UIA) library.
   PAGES/                    One file per page/screen: locators + page-specific keywords only.
-    web/
-      html_form_page.resource     POM for testpages.eviltester.com HTML form page.
-    windows/
-      gui_test_app_page.resource  POM for the deterministic GUI Test Playground.
+    web_examples/           Page objects for the web examples.
+    windows-examples/       Page object for the GUI Test Playground.
 TESTS/                      Test layer - suites only, no locators, no raw library calls.
-  web/
-    html_form_tests.robot
-  windows/
+  web_examples/             Robot Framework suites for the web examples.
+  windows-examples/
     gui_test_app_tests.robot
+GuiTestApp/                 Deterministic Windows Forms application used by the FlaUI suite.
+custom_report.py            Adds Requirement IDs and Windows failure screenshots to reports.
 requirements.txt            Core Robot Framework only
 requirements-web.txt        Web stack (Playwright via Browser library)
 requirements-windows.txt    Windows desktop stack (FlaUI)
 requirements-dev.txt        Optional linting tools
 ```
 
-**Layering rule:** TESTS → PAGES → UTILS → external library. A test file should only ever
-import a `PAGES/*.resource` file. A page file should only ever import a `UTILS/*.resource`
-file. This keeps locator changes and automation-engine changes isolated to a single layer.
+**Layering rule:** `TESTS` → `PAGES` → `UTILS` → external library. Suites import page objects;
+page objects import utility resources. This keeps selectors and automation-engine details out of
+the test cases.
 
 ## Test suite strategy
 
@@ -41,8 +39,8 @@ file. This keeps locator changes and automation-engine changes isolated to a sin
 - **One test case = one user scenario**, written only with page-object keywords, e.g.
   `Fill Username`, `Submit Form`, `Press Equals`. This keeps test cases readable as
   documentation and immune to locator changes.
-- **Group suites by domain** under `TESTS/<domain>/` (`web`, `windows`, and later e.g. `api`,
-  `mobile`). Each domain folder can get its own `Suite Setup`/`Teardown` strategy since a
+- **Group suites by domain** under `TESTS/<domain>/` (`web_examples`, `windows-examples`, and
+  later e.g. `api`, `mobile`). Each domain folder can get its own `Suite Setup`/`Teardown` strategy since a
   browser and a desktop app are opened/closed very differently.
 - **Tag every suite** (`Test Tags` at suite level, e.g. `web`, `windows`, `smoke`,
   `regression`) so CI can select subsets with `robot --include smoke`.
@@ -88,7 +86,8 @@ binaries used by the web tests. The Windows/FlaUI dependency installs Python.NET
 Install the RobotCode extension, then open the repository root folder (the folder containing
 `TESTS`, `RESOURCES`, and `.venv`) in VS Code. Select the project interpreter with
 **Python: Select Interpreter** and choose `.venv\Scripts\python.exe`. Reload the VS Code window
-after changing the interpreter so RobotCode refreshes test discovery.
+after changing the interpreter so RobotCode refreshes test discovery. You can then right-click a
+suite or test in a `.robot` file and select **Run Test**.
 
 ### Package installation troubleshooting
 
@@ -139,45 +138,32 @@ Use the project interpreter so every command runs with the installed test depend
 ```
 
 Robot Framework writes `output.xml`, `log.html`, and `report.html` to the folder passed with
-`-d`. Open `output/report.html` after a run for the standard summary report.
+`-d`. Open `output/report.html` for the standard summary report and `output/log.html` for
+keyword-level execution details.
+
+The web suites start Chromium headlessly by default. Set `${HEADLESS}` to `${False}` in
+`RESOURCES/config.resource` when you need to watch browser interactions locally.
 
 ### Generate the enhanced report
 
-Run the custom report script after a terminal test run to add the Requirement ID column and
-embed the Windows failure screenshots:
+Run the custom report script after a terminal test run to add the Requirement ID column. When a
+Windows test fails, it also embeds the screenshot captured by the FlaUI test teardown:
 
 ```powershell
 .venv\Scripts\python.exe -m robot -d output TESTS
 .venv\Scripts\python.exe custom_report.py
 ```
 
-The VS Code right-click **Run Test** command produces Robot Framework's standard reports, but it
-does not run `custom_report.py`. Use the terminal workflow above when the enhanced report is
-needed.
-
-## Failure Screenshot Simulation
-
-One deliberate failure exists in the web Triangle suite and one in the Windows GUI Test App
-suite. Both are tagged `simulation` and verify that Browser and FlaUI screenshots are embedded
-in the native `log.html` for failed test steps.
-
-```powershell
-# Run only the two screenshot simulations
-.venv\Scripts\robot -d output --include simulation TESTS
-.venv\Scripts\python custom_report.py
-
-# Run the normal test collection without deliberate failures
-.venv\Scripts\robot -d output --exclude simulation TESTS
-.venv\Scripts\python custom_report.py
-```
+The VS Code right-click **Run Test** command produces standard Robot Framework reports, but does
+not invoke `custom_report.py`. Use the terminal workflow above when the enhanced report is needed.
 
 ## Requirement IDs in the native report
 
-Robot Framework generates its normal `output/report.html`. To add the `Requirement ID`
-column without changing its appearance or behavior, run this after the test run:
+Each test can carry a requirement tag. `custom_report.py` adds the first matching `REQ-*` tag to
+an additional **Requirement ID** column in `output/report.html`.
 
 ```powershell
-.venv\Scripts\python custom_report.py
+.venv\Scripts\python.exe custom_report.py
 ```
 
 Add a requirement ID to an individual test case with a tag:
@@ -191,10 +177,10 @@ Example scenario
 
 The column shows the first `REQ-*` tag on each test; untagged tests display `-`.
 
-## Screenshots on failure
+## Failure screenshots
 
-Both automation libraries capture a screenshot automatically when a keyword fails, but they
-behave differently - know where to look before you go hunting:
+Both automation libraries capture a screenshot when a keyword fails, but they store the evidence
+in different locations:
 
 - **Web (Browser/Playwright)**: `web_utils.resource` imports `Browser highlight_on_failure=True`.
   On failure it saves a real PNG to `${OUTPUTDIR}/browser/screenshot/fail-screenshot-{index}.png`
@@ -203,9 +189,8 @@ behave differently - know where to look before you go hunting:
   border around the selector that could not be found, so the screenshot shows exactly what was
   being looked for.
 - **Windows (FlaUI)**: a failed Windows test captures a `.jpg` in
-  `${OUTPUTDIR}/windows-screenshots/`. Run `custom_report.py` after the test run; it finds the
-  screenshot, adds it to the failed test's native `log.html` entry, regenerates Robot's native
-  `report.html`/`log.html`, and then adds the Requirement ID column to `report.html`.
+  `${OUTPUTDIR}/windows-screenshots/`. Run `custom_report.py` after the test run to add the image
+  to the failed test's native `log.html` and regenerate the reports.
 
 ## Windows GUI example
 
@@ -215,7 +200,7 @@ template. Its page object uses stable UI Automation IDs, and
 validation, reset behavior, a counter, and a state toggle. The suite teardown closes the exact
 application process launched by the suite.
 
-Rebuild it after changing its source:
+Run it manually with `GuiTestApp/run.bat`. Rebuild it after changing its source:
 
 ```powershell
 GuiTestApp\build.bat
